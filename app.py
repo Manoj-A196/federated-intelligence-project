@@ -1,110 +1,170 @@
 import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
 
 # --------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------
 st.set_page_config(
-    page_title="Device Optimization Demo",
+    page_title="Device Optimization – Privacy Preserving Mobile Computing",
     page_icon="📱",
     layout="wide"
 )
 
 st.title("📱 Device Optimization for Privacy-Preserving Mobile Computing")
-st.caption("Input → Optimization → Output (Working Demo Model)")
+st.caption("Multi-device simulation | Centralized vs Optimized | Federated-style demo")
 
 st.divider()
 
 # --------------------------------------------------
-# USER INPUT SECTION
+# DEVICE INPUT CONFIGURATION
 # --------------------------------------------------
-st.subheader("🔧 Device / App Input Configuration")
+st.subheader("🔧 Device Input Configuration")
 
-app_name = st.selectbox(
-    "Select Mobile Application",
-    ["Instagram", "Facebook", "X (Twitter)", "Snapchat", "Google Maps", "Music Player"]
-)
+num_devices = st.slider("Number of Mobile Devices", 1, 5, 3)
 
-data_access = st.multiselect(
-    "Select Data Accessed by App",
-    ["Location", "Personal Information", "Usage Data"]
-)
+apps = ["Instagram", "Facebook", "X (Twitter)", "Snapchat", "Google Maps"]
 
-cpu_usage = st.selectbox(
-    "CPU Usage Level",
-    ["Low", "Medium", "High"]
-)
+device_data = []
 
-network_usage = st.selectbox(
-    "Network Usage Level",
-    ["Low", "Medium", "High"]
-)
+for i in range(num_devices):
+    st.markdown(f"### 📱 Device {i+1}")
+    app = st.selectbox(f"Select App (Device {i+1})", apps, key=f"app{i}")
+
+    data_access = st.multiselect(
+        f"Data Accessed (Device {i+1})",
+        ["Location", "Personal Information", "Usage Data"],
+        key=f"data{i}"
+    )
+
+    cpu = st.selectbox(
+        f"CPU Usage (Device {i+1})",
+        ["Low", "Medium", "High"],
+        key=f"cpu{i}"
+    )
+
+    network = st.selectbox(
+        f"Network Usage (Device {i+1})",
+        ["Low", "Medium", "High"],
+        key=f"net{i}"
+    )
+
+    device_data.append({
+        "Device": f"Device {i+1}",
+        "App": app,
+        "Data": data_access,
+        "CPU": cpu,
+        "Network": network
+    })
 
 st.divider()
 
 # --------------------------------------------------
-# RISK CALCULATION FUNCTION
+# HELPER FUNCTIONS
 # --------------------------------------------------
-def calculate_risk(data, cpu, network):
+def risk_level(data, cpu, network):
     if "Personal Information" in data or network == "High":
-        return "High 🔴"
+        return 3
     elif "Location" in data:
-        return "Medium 🟠"
+        return 2
     else:
-        return "Low 🟢"
+        return 1
+
+def risk_label(level):
+    return ["Low 🟢", "Medium 🟠", "High 🔴"][level-1]
 
 # --------------------------------------------------
-# OPTIMIZATION BUTTON
+# PROCESS BUTTON
 # --------------------------------------------------
-if st.button("⚙️ Optimize Device"):
-    st.subheader("📊 System Processing & Output")
+if st.button("▶ Run Device Optimization Simulation"):
+    st.subheader("📊 Centralized vs Optimized Processing")
 
-    # Before optimization
-    before_risk = calculate_risk(data_access, cpu_usage, network_usage)
+    centralized = []
+    optimized = []
+    federated_log = []
 
-    st.markdown("### 🔴 Before Optimization")
-    st.write(f"**App Name:** {app_name}")
-    st.write(f"**Privacy Risk:** {before_risk}")
-    st.write(f"**CPU Usage:** {cpu_usage}")
-    st.write(f"**Network Usage:** {network_usage}")
+    for d in device_data:
+        # CENTRALIZED
+        c_cpu = 3 if d["CPU"] == "High" else 2 if d["CPU"] == "Medium" else 1
+        c_net = 3 if d["Network"] == "High" else 2 if d["Network"] == "Medium" else 1
+        c_risk = risk_level(d["Data"], d["CPU"], d["Network"])
+
+        # OPTIMIZED (FEDERATED STYLE)
+        o_cpu = max(1, c_cpu - 1)
+        o_net = 1
+        o_data = [x for x in d["Data"] if x != "Personal Information"]
+        o_risk = risk_level(o_data, "Low", "Low")
+
+        centralized.append([d["Device"], d["App"], c_cpu, c_net, c_risk])
+        optimized.append([d["Device"], d["App"], o_cpu, o_net, o_risk])
+
+        federated_log.append(
+            f"{d['Device']} processed data locally → sent optimized update → raw data blocked"
+        )
+
+    # --------------------------------------------------
+    # DATAFRAMES
+    # --------------------------------------------------
+    df_c = pd.DataFrame(
+        centralized,
+        columns=["Device", "App", "CPU", "Network", "Privacy Risk"]
+    )
+
+    df_o = pd.DataFrame(
+        optimized,
+        columns=["Device", "App", "CPU", "Network", "Privacy Risk"]
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### 🔴 Centralized Processing")
+        st.dataframe(df_c)
+
+    with col2:
+        st.markdown("### 🟢 Optimized (Federated-Style)")
+        st.dataframe(df_o)
 
     st.divider()
 
     # --------------------------------------------------
-    # OPTIMIZATION LOGIC
+    # CHARTS
     # --------------------------------------------------
-    optimized_cpu = "Low" if cpu_usage != "Low" else "Low"
-    optimized_network = "Low"
+    st.subheader("📈 Performance Comparison (Before vs After)")
 
-    optimized_data = [
-        d for d in data_access if d != "Personal Information"
-    ]
+    fig, ax = plt.subplots()
+    ax.bar(df_c["Device"], df_c["Network"], label="Centralized")
+    ax.bar(df_o["Device"], df_o["Network"], label="Optimized")
+    ax.set_ylabel("Network Usage Level")
+    ax.set_title("Network Usage Reduction")
+    ax.legend()
+    st.pyplot(fig)
 
-    after_risk = calculate_risk(optimized_data, optimized_cpu, optimized_network)
+    st.divider()
 
-    # After optimization
-    st.markdown("### 🟢 After Optimization")
-    st.write(f"**Optimized CPU Usage:** {optimized_cpu}")
-    st.write(f"**Optimized Network Usage:** {optimized_network}")
-    st.write(f"**Blocked Raw Data:** Personal Information")
-    st.write(f"**Privacy Risk:** {after_risk}")
+    # --------------------------------------------------
+    # FEDERATED OPTIMIZATION LOG
+    # --------------------------------------------------
+    st.subheader("📜 Federated Optimization Log")
 
-    st.success("Device optimized successfully with privacy preservation")
+    for log in federated_log:
+        st.code(log)
 
     st.divider()
 
     # --------------------------------------------------
     # PRIVACY CONFIRMATION
     # --------------------------------------------------
-    st.subheader("🔐 Privacy Preservation Status")
+    st.subheader("🔐 Privacy Preservation Summary")
 
-    st.info("""
+    st.success("""
+    ✔ Data processed locally on devices  
     ✔ Raw personal data blocked  
-    ✔ Data processed locally on device  
-    ✔ Reduced network communication  
-    ✔ Improved performance and security  
+    ✔ Only optimized updates shared  
+    ✔ Reduced network usage and risk  
     """)
 
 # --------------------------------------------------
 # FOOTER
 # --------------------------------------------------
-st.caption("Interactive working model – academic demonstration")
+st.caption("Academic working model – simulated device optimization with federated principles")
