@@ -11,56 +11,39 @@ st.set_page_config(
 )
 
 st.title("📱 Device Optimization for Privacy-Preserving Mobile Computing")
-st.caption("Input → Processing → Output (Working Demo Model)")
+st.caption("Single-device optimization demo | Input → Processing → Output")
 
 st.divider()
 
 # --------------------------------------------------
-# FIXED DEVICES (NO SLIDER)
+# SINGLE DEVICE INPUT
 # --------------------------------------------------
-st.subheader("🔧 Mobile Device Inputs")
+st.subheader("🔧 Mobile Application Configuration")
 
-devices = [
-    {"Device": "Device 1", "App": "Instagram"},
-    {"Device": "Device 2", "App": "Facebook"},
-    {"Device": "Device 3", "App": "Google Maps"}
-]
+app_name = st.selectbox(
+    "Select Mobile Application",
+    ["Instagram", "Facebook", "X (Twitter)", "Snapchat", "Google Maps"]
+)
 
-device_inputs = []
+data_access = st.multiselect(
+    "Data Accessed by Application",
+    ["Location", "Personal Information", "Usage Data"]
+)
 
-for i, d in enumerate(devices):
-    st.markdown(f"### 📱 {d['Device']} – {d['App']}")
+cpu_usage = st.selectbox(
+    "CPU Usage Level",
+    ["Low", "Medium", "High"]
+)
 
-    data_access = st.multiselect(
-        "Data Accessed",
-        ["Location", "Personal Information", "Usage Data"],
-        key=f"data_{i}"
-    )
-
-    cpu_usage = st.selectbox(
-        "CPU Usage Level",
-        ["Low", "Medium", "High"],
-        key=f"cpu_{i}"
-    )
-
-    network_usage = st.selectbox(
-        "Network Usage Level",
-        ["Low", "Medium", "High"],
-        key=f"net_{i}"
-    )
-
-    device_inputs.append({
-        "Device": d["Device"],
-        "App": d["App"],
-        "Data": data_access,
-        "CPU": cpu_usage,
-        "Network": network_usage
-    })
+network_usage = st.selectbox(
+    "Network Usage Level",
+    ["Low", "Medium", "High"]
+)
 
 st.divider()
 
 # --------------------------------------------------
-# HELPER FUNCTIONS (IMPORTANT)
+# HELPER FUNCTIONS
 # --------------------------------------------------
 def to_numeric(value):
     return {"Low": 1, "Medium": 2, "High": 3}[value]
@@ -78,68 +61,46 @@ def risk_level(data, network):
 # --------------------------------------------------
 if st.button("▶ Run Device Optimization"):
 
-    centralized_rows = []
-    optimized_rows = []
+    # -------- BEFORE OPTIMIZATION --------
+    c_cpu = to_numeric(cpu_usage)
+    c_net = to_numeric(network_usage)
+    c_risk = risk_level(data_access, network_usage)
 
-    for d in device_inputs:
-        # ---------- CENTRALIZED ----------
-        c_cpu = to_numeric(d["CPU"])
-        c_net = to_numeric(d["Network"])
-        c_risk = risk_level(d["Data"], d["Network"])
+    st.subheader("🔴 Before Optimization")
+    st.write(f"**Application:** {app_name}")
+    st.write(f"**CPU Usage Level:** {cpu_usage}")
+    st.write(f"**Network Usage Level:** {network_usage}")
+    st.write(f"**Privacy Risk:** {c_risk}")
 
-        centralized_rows.append({
-            "Device": d["Device"],
-            "CPU": c_cpu,
-            "Network": c_net,
-            "Privacy Risk": c_risk
-        })
+    st.divider()
 
-        # ---------- OPTIMIZED ----------
-        o_cpu = max(1, c_cpu - 1)
-        o_net = 1
-        filtered_data = [x for x in d["Data"] if x != "Personal Information"]
-        o_risk = risk_level(filtered_data, "Low")
+    # -------- AFTER OPTIMIZATION --------
+    o_cpu = max(1, c_cpu - 1)
+    o_net = 1
+    filtered_data = [x for x in data_access if x != "Personal Information"]
+    o_risk = risk_level(filtered_data, "Low")
 
-        optimized_rows.append({
-            "Device": d["Device"],
-            "CPU": o_cpu,
-            "Network": o_net,
-            "Privacy Risk": o_risk
-        })
-
-    # --------------------------------------------------
-    # DATAFRAMES
-    # --------------------------------------------------
-    df_c = pd.DataFrame(centralized_rows)
-    df_o = pd.DataFrame(optimized_rows)
-
-    st.subheader("📊 Processing Comparison")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("### 🔴 Centralized")
-        st.dataframe(df_c, use_container_width=True)
-
-    with col2:
-        st.markdown("### 🟢 Optimized")
-        st.dataframe(df_o, use_container_width=True)
+    st.subheader("🟢 After Optimization")
+    st.write(f"**Optimized CPU Usage Level:** {['Low','Medium','High'][o_cpu-1]}")
+    st.write(f"**Optimized Network Usage Level:** Low")
+    st.write("**Blocked Raw Data:** Personal Information")
+    st.write(f"**Privacy Risk:** {o_risk}")
 
     st.divider()
 
     # --------------------------------------------------
-    # BAR GRAPH (GUARANTEED VISIBLE)
+    # BAR GRAPH (GUARANTEED)
     # --------------------------------------------------
-    st.subheader("📈 Network Usage Comparison (Before vs After)")
+    st.subheader("📈 Network Usage Comparison")
 
     graph_df = pd.DataFrame({
-        "Centralized": df_c["Network"].values,
-        "Optimized": df_o["Network"].values
-    }, index=df_c["Device"])
+        "Before Optimization": [c_net],
+        "After Optimization": [o_net]
+    }, index=[app_name])
 
     st.bar_chart(graph_df)
 
-    st.caption("1 = Low, 2 = Medium, 3 = High")
+    st.caption("Network usage scale: 1 = Low, 2 = Medium, 3 = High")
 
     st.divider()
 
@@ -149,10 +110,10 @@ if st.button("▶ Run Device Optimization"):
     st.subheader("🔐 Privacy Preservation Result")
 
     st.success("""
-    ✔ Raw personal data blocked  
-    ✔ Data processed locally  
+    ✔ Data processed locally on device  
+    ✔ Raw personal information blocked  
     ✔ Network usage reduced  
-    ✔ Device performance optimized  
+    ✔ Privacy risk minimized  
     """)
 
 # --------------------------------------------------
